@@ -4,6 +4,7 @@ import (
 	"crypto/sha1" //nolint:gosec
 	"encoding/hex"
 	"fmt"
+	"github.com/rs/cors"
 	"io"
 	"io/ioutil"
 	"net"
@@ -144,6 +145,8 @@ func (p *XMLRPC) startHTTPServer(user string, password string, protocol string, 
 	mux := http.NewServeMux()
 	mux.Handle("/RPC2", newHTTPBasicAuth(user, password, p.createRPCServer(s)))
 
+	//mux.ServeHTTP()
+
 	progRestHandler := NewSupervisorRestful(s).CreateProgramHandler()
 	mux.Handle("/program/", newHTTPBasicAuth(user, password, progRestHandler))
 
@@ -194,11 +197,12 @@ func (p *XMLRPC) startHTTPServer(user string, password string, protocol string, 
 	}
 
 	listener, err := net.Listen(protocol, listenAddr)
+
 	if err == nil {
 		log.WithFields(log.Fields{"addr": listenAddr, "protocol": protocol}).Info("success to listen on address")
 		p.listeners[protocol] = listener
 		startedCb()
-		http.Serve(listener, mux)
+		http.Serve(listener, cors.AllowAll().Handler(mux))
 	} else {
 		startedCb()
 		log.WithFields(log.Fields{"addr": listenAddr, "protocol": protocol}).Fatal("fail to listen on address")

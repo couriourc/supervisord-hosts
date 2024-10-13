@@ -3,6 +3,7 @@ package config
 import (
 	"bytes"
 	"fmt"
+	"github.com/hashicorp/go-envparse"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -10,7 +11,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/hashicorp/go-envparse"
 	"github.com/ochinchina/go-ini"
 	log "github.com/sirupsen/logrus"
 )
@@ -117,7 +117,6 @@ func (c *Config) createEntry(name string, configDir string) *Entry {
 	return entry
 }
 
-//
 // Load the configuration and return loaded programs
 func (c *Config) Load() ([]string, error) {
 	myini := ini.NewIni()
@@ -204,6 +203,11 @@ func (c *Config) setProgramDefaultParams(cfg *ini.Ini) {
 // GetConfigFileDir returns directory of supervisord configuration file
 func (c *Config) GetConfigFileDir() string {
 	return filepath.Dir(c.configFile)
+}
+
+// GetConfigFile returns directory of supervisord configuration file
+func (c *Config) GetConfigFile() string {
+	return c.configFile
 }
 
 // convert supervisor file pattern to the go regrexp
@@ -405,7 +409,8 @@ func parseEnvFiles(s string) *map[string]string {
 }
 
 // GetEnv returns slice of strings with keys separated from values by single "=". An environment string example:
-//  environment = A="env 1",B="this is a test"
+//
+//	environment = A="env 1",B="this is a test"
 func (c *Entry) GetEnv(key string) []string {
 	value, ok := c.keyValues[key]
 	result := make([]string, 0)
@@ -426,7 +431,9 @@ func (c *Entry) GetEnv(key string) []string {
 }
 
 // GetEnvFromFiles returns slice of strings with keys separated from values by single "=". An envFile example:
-//  envFiles = global.env,prod.env
+//
+//	envFiles = global.env,prod.env
+//
 // cat global.env
 // varA=valueA
 func (c *Entry) GetEnvFromFiles(key string) []string {
@@ -512,7 +519,6 @@ func (c *Entry) GetStringArray(key string, sep string) []string {
 //	logSize=1GB
 //	logSize=1KB
 //	logSize=1024
-//
 func (c *Entry) GetBytes(key string, defValue int) int {
 	v, ok := c.keyValues[key]
 

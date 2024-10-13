@@ -128,28 +128,41 @@ func (p *Process) addToCron() {
 
 	if s != "" {
 		log.WithFields(log.Fields{"program": p.GetName()}).Info("try to create cron program with cron expression:", s)
-		scheduler.AddFunc(s, func() {
+		_, err := scheduler.AddFunc(s, func() {
 			log.WithFields(log.Fields{"program": p.GetName()}).Info("start cron program")
-			if !p.isRunning() {
-				p.Start(false)
+			if p.inStart {
+				p.Stop(false)
 			}
+			if p.isRunning() {
+				//	p.Start(false)
+				log.WithFields(log.Fields{"program": p.GetName()}).Info("stop pre program")
+				p.Stop(true)
+			}
+
+			log.WithFields(log.Fields{"program": p.GetName()}).Info("start new program")
+			p.Start(true)
+			//}
+
 		})
+		if err != nil {
+			log.WithFields(log.Fields{"program": p.GetName()}).Error("fail to create cron program", err)
+			return
+		}
 	}
 
 }
 
 // Start process
 // Args:
-//  wait - true, wait the program started or failed
+//
+//	wait - true, wait the program started or failed
 func (p *Process) Start(wait bool) {
 	log.WithFields(log.Fields{"program": p.GetName()}).Info("try to start program")
-	p.lock.Lock()
 	if p.inStart {
 		log.WithFields(log.Fields{"program": p.GetName()}).Info("Don't start program again, program is already started")
-		p.lock.Unlock()
-		return
+		p.Stop(true)
 	}
-
+	p.lock.Lock()
 	p.inStart = true
 	p.stopByUser = false
 	p.lock.Unlock()
@@ -174,10 +187,10 @@ func (p *Process) Start(wait bool) {
 			if time.Now().Unix()-p.startTime.Unix() < 2 {
 				time.Sleep(5 * time.Second)
 			}
-			if p.stopByUser {
-				log.WithFields(log.Fields{"program": p.GetName()}).Info("Stopped by user, don't start it again")
-				break
-			}
+			//if p.stopByUser {
+			//	log.WithFields(log.Fields{"program": p.GetName()}).Info("Stopped by user, don't start it again")
+			//	break
+			//}
 			if !p.isAutoRestart() {
 				log.WithFields(log.Fields{"program": p.GetName()}).Info("Don't start the stopped program because its autorestart flag is false")
 				break
@@ -392,7 +405,6 @@ func (p *Process) getExitCodes() []int {
 }
 
 // check if the process is running or not
-//
 func (p *Process) isRunning() bool {
 	if p.cmd != nil && p.cmd.Process != nil {
 		if runtime.GOOS == "windows" {
@@ -506,7 +518,6 @@ func (p *Process) failToStartProgram(reason string, finishCb func()) {
 }
 
 // monitor if the program is in running before endTime
-//
 func (p *Process) monitorProgramIsRunning(endTime time.Time, monitorExited *int32, programExited *int32) {
 	// if time is not expired
 	for time.Now().Before(endTime) && atomic.LoadInt32(programExited) == 0 {
@@ -700,9 +711,9 @@ func (p *Process) changeStateTo(procState State) {
 // Signal sends signal to the process
 //
 // Args:
-//   sig - the signal to the process
-//   sigChildren - if true, sends the same signal to the process and its children
 //
+//	sig - the signal to the process
+//	sigChildren - if true, sends the same signal to the process and its children
 func (p *Process) Signal(sig os.Signal, sigChildren bool) error {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
@@ -727,9 +738,9 @@ func (p *Process) sendSignals(sigs []string, sigChildren bool) {
 // send signal to the process
 //
 // Args:
-//    sig - the signal to be sent
-//    sigChildren - if true, the signal also will be sent to children processes too
 //
+//	sig - the signal to be sent
+//	sigChildren - if true, the signal also will be sent to children processes too
 func (p *Process) sendSignal(sig os.Signal, sigChildren bool) error {
 	if p.cmd != nil && p.cmd.Process != nil {
 		log.WithFields(log.Fields{"program": p.GetName(), "signal": sig}).Info("Send signal to program")
@@ -943,6 +954,7 @@ func (p *Process) Stop(wait bool) {
 		log.WithFields(log.Fields{"program": p.GetName()}).Info("program is not running")
 		return
 	}
+
 	log.WithFields(log.Fields{"program": p.GetName()}).Info("stop the program")
 	sigs := strings.Fields(p.config.GetString("stopsignal", "SIGTERM"))
 	waitsecs := time.Duration(p.config.GetInt("stopwaitsecs", 10)) * time.Second
@@ -977,6 +989,7 @@ func (p *Process) Stop(wait bool) {
 		if atomic.LoadInt32(&stopped) == 0 {
 			log.WithFields(log.Fields{"program": p.GetName()}).Info("force to kill the program")
 			p.Signal(syscall.SIGKILL, killasgroup)
+
 			killEndTime := time.Now().Add(killwaitsecs)
 			for killEndTime.After(time.Now()) {
 				// if it exits

@@ -18,9 +18,10 @@ require (
 	github.com/ochinchina/supervisord/process v0.0.0-20220520055329-8fdf6b62a44f
 	github.com/ochinchina/supervisord/signals v0.0.0-20220721095143-c2527852d28f
 	github.com/ochinchina/supervisord/types v0.0.0-20220520055329-8fdf6b62a44f
-	github.com/ochinchina/supervisord/util v0.0.0-20220721095143-c2527852d28f
+	github.com/ochinchina/supervisord/util v0.0.0-20230902082938-c2cae38b7454
 	github.com/ochinchina/supervisord/xmlrpcclient v0.0.0-20220520055329-8fdf6b62a44f
 	github.com/prometheus/client_golang v1.12.2
+	github.com/rs/cors v1.11.1
 	github.com/sirupsen/logrus v1.9.0
 )
 
